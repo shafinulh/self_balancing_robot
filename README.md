@@ -9,5 +9,6 @@ Control code for an 2-wheeled self balancing robot.
 * Featured an adjustable chassis to allow the center of mass (CoM) to be shifted which eased the process of tuning the PID controller. 
 
 ## Balancing the Robot
+![](img\sbr_video.gif)
 * Implemented a PID Control Loop to control the motors based off of the readings from the sensor to help maintain its balance by driving in the direction that it is falling
 * Utilized Hardware Timers and Interrupts to continuously read the data from the IMU, calculate the robot's current angle, and step the motors at the necessary speed
