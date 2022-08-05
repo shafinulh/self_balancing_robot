@@ -25,7 +25,7 @@ StepperMotor::StepperMotor(int step_pin, int dir_pin){
     _speed = 0;
     _delay = _MIN_DELAY;
 }
-    //speed from -1 to 1 
+//speed from -1 to 1 
 void StepperMotor::run(double speed){
     _speed = Utils::bound(speed, -1, 1);
     _direction = (speed < 0) ? 0 : 1;
