@@ -34,7 +34,6 @@ void StepperMotor::run(double speed){
 }
 
 void StepperMotor::update(){
-    Serial.println((String)_delay + " " + _direction + " " + micros() + " " + _step_direction);
     digitalWrite(_dir_pin, _direction);
     if (micros() - _last_step_time < _delay) return; 
     if (_speed == 0) return;
@@ -52,9 +51,8 @@ void StepperMotor::timerHandler() { //to handle interrupts
 double StepperMotor::getPosition(){
     return _position;  
 }
-void StepperMotor::printDelay(){
-    Serial.print("delay: ");
-    Serial.println(_delay);
+void StepperMotor::Debug(){
+    Serial.println((String)_delay + " " + _direction + " " + micros() + " " + _step_direction);
 }
 void StepperMotor::step() {
     digitalWrite(_step_pin, !digitalRead(_step_pin));

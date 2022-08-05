@@ -6,28 +6,31 @@
 #include <MadgwickAHRS.h>
 #include <StepperController.h>
 
-//7,8,9
+
+#define DEBUG false
+
+
+//Initializing base wheel motors
 StepperMotor leftMotor(5, 6);
-//4,3,2
 StepperMotor rightMotor(10, 11); 
 
+//Hardware interrupts
 MBED_RPI_PICO_Timer ITimer0(0);
 MBED_RPI_PICO_Timer ITimer1(1);
 
 void TimerHandler1(uint alarm_num){
   TIMER_ISR_START(alarm_num);
   leftMotor.timerHandler();
-  //rightMotor.timerHandler();
   TIMER_ISR_END(alarm_num);
 }
 
 void TimerHandler2(uint alarm_num){
   TIMER_ISR_START(alarm_num);
-  //leftMotor.timerHandler();
   rightMotor.timerHandler();
   TIMER_ISR_END(alarm_num);
 }
 
+//Variables for Angle Calculation
 Madgwick filter;
 const float sensorRate = 104.00;
 float pitchFilteredOld;
@@ -35,13 +38,18 @@ float xAcc, yAcc, zAcc;
 float xGyro, yGyro, zGyro;
 float roll, pitch, heading;
 
-double speed_p = 0, speed_i = 0, speed_d = 0;
-double kp, ki, kd;
-double speed; 
+//PID Constants
+float kp = 1/11.0, 
+float ki;
+float kd = 1/40.0;
+float desired_angle = 0;
+float error, error_dt;
+float pid_p, pid_i, pid_d;
+float speed; 
 int wallace = 0;
 
 void setup(){
-  ////////////////////////setting up MICROSTEPPING
+  //setting up 1/16th MICROSTEPPING, should be handled in StepperController class next time
   pinMode(2, OUTPUT);
   digitalWrite(2, HIGH);
   pinMode(3, OUTPUT);
@@ -54,7 +62,7 @@ void setup(){
   digitalWrite(8, HIGH);
   pinMode(9, OUTPUT);
   digitalWrite(9, HIGH);
-  /////////////////////////
+  //-------------------------------------------------------
   
   Serial.begin(9600);
   ITimer0.attachInterruptInterval(50, TimerHandler1);
@@ -69,32 +77,36 @@ void setup(){
 }
 
 void loop() {
+  //Collect the data from the IMU and calculate the orientation (angle) of the robot using the MadgwickAHRS Algorithm
   if(IMU.accelerationAvailable() && IMU.gyroscopeAvailable()){
     IMU.readAcceleration(xAcc, yAcc, zAcc);
     IMU.readGyroscope(xGyro, yGyro, zGyro); 
     filter.updateIMU(xGyro, yGyro, zGyro, xAcc, yAcc, zAcc);
     pitch = filter.getRoll();
     float pitchFiltered = 0.1 * pitch + 0.9 * pitchFilteredOld; // low pass filter
-    //Serial.println("pitch: " + String(pitchFiltered));
     pitchFilteredOld = pitchFiltered;
   }
-  // Serial.print("angle: ");
-  // Serial.println(pitchFilteredOld);
-  Serial.print("xGyro: ");
-  Serial.println(xGyro);
+  #if DEBUG:
+    Serial.print("angle: ");
+    Serial.println(pitchFilteredOld);
+    Serial.print("xGyro: ");
+    Serial.println(xGyro);
+  #endif
 
-  // speed_p = (pitchFilteredOld/(90.0*10))*18; //ONLY PROPORTIONAL CONTROL
+  //Proportional and Differential Control (Integral part yet to be implemented and tuned)
   if (abs(xGyro) < 1){
     xGyro = 0;
   } 
-  speed_p = (pitchFilteredOld) * (1/11.0); 
-  speed_d = (1/40.0) * xGyro;
-  speed = 1*speed_p + 0*speed_d;
-  if (speed == 0){
-    speed = 0.00001;
-  }
+  //Proportional Error
+  error = pitchFilteredOld - desired_angle;
+  pid_p = error * kp;
+  //Differential Error 
+  error_dt - xGyro; //xGyro is already the ROC of the angle so we can utilize this then approximating the derivative of the error
+  pid_d = kd*error_dt;
+
+  speed = pid_p + pid_d;
+  //Serial.println(speed);  
 
   leftMotor.run(-speed);
   rightMotor.run(speed);
-
 }
